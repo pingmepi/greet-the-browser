@@ -2,77 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://lchamzwbdmqpmabvaqpi.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjaGFtendiZG1xcG1hYnZhcXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0NDk2NDQsImV4cCI6MjA1OTAyNTY0NH0.6xB_TQjXacVzLUtITx0L9A_OSLaaaarwkujCkLiC958";
+const SUPABASE_URL = "https://bfrlyelijakfnahwaqrx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmcmx5ZWxpamFrZm5haHdhcXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODQxMTcsImV4cCI6MjA2MTY2MDExN30.eHP1sl9eG-2-Cq_g99VYc--YusqnwENhxz1TuSmnl8c";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Create a custom storage implementation that uses localStorage for better compatibility
-const customStorage = {
-  getItem: (key: string) => {
-    try {
-      // Use localStorage for better compatibility
-      const localItem = localStorage.getItem(key);
-      return localItem ? JSON.parse(localItem) : null;
-    } catch (error) {
-      console.error(`[Supabase] Error getting item from storage: ${key}`, error);
-      return null;
-    }
-  },
-  setItem: (key: string, value: any) => {
-    try {
-      // Store in localStorage
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(`[Supabase] Error setting item in storage: ${key}`, error);
-    }
-  },
-  removeItem: (key: string) => {
-    try {
-      // Remove from localStorage
-      localStorage.removeItem(key);
-    } catch (error) {
-      console.error(`[Supabase] Error removing item from storage: ${key}`, error);
-    }
-  },
-};
-
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storageKey: 'sb-lchamzwbdmqpmabvaqpi-auth',
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // Important: disable automatic URL parsing
-    storage: customStorage,
-    flowType: 'pkce', // Use PKCE flow for better security
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
-
-// Add debug logging for authentication events
-const setupAuthLogging = () => {
-  console.log("[Supabase] Setting up auth event listeners");
-
-  // Listen for auth state changes
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log(`[Supabase] Auth state changed: ${event}`, session ? `User: ${session.user?.id}` : "No session");
-  });
-
-  return subscription;
-};
-
-// Setup auth logging in non-production environments
-if (process.env.NODE_ENV !== 'production') {
-  setupAuthLogging();
-}
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
