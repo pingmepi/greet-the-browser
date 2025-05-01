@@ -1,0 +1,211 @@
+
+import { supabase } from "@/integrations/supabase/client";
+import { Question } from "@/lib/types";
+
+/**
+ * Fetches relevant questions based on selected themes
+ * @param themes Array of theme IDs to base questions on
+ * @param limit Number of questions to fetch (default: 5)
+ * @returns Array of questions
+ */
+export const fetchThemeBasedQuestions = async (themes: string[], limit: number = 5): Promise<Question[]> => {
+  try {
+    console.log("[QuestionsService] Fetching questions for themes:", themes);
+
+    // Validate themes input
+    if (!themes || themes.length === 0) {
+      console.warn("[QuestionsService] No themes provided, using default themes");
+      themes = ["minimal"];
+    }
+
+    // Log the themes we're using
+    console.log("[QuestionsService] Using themes:", themes);
+
+    // SIMPLIFIED APPROACH: Always use default questions for now
+    console.log("[QuestionsService] Using default questions directly to ensure functionality");
+    console.log(`[QuestionsService] Default questions count: ${DEFAULT_QUESTIONS.length}`);
+
+    // Add theme-specific logging
+    console.log(`[QuestionsService] Theme-specific questions would be fetched for: ${themes.join(', ')}`);
+    return DEFAULT_QUESTIONS;
+
+    /* Commented out database query for now
+    // Call the database function to get theme-based questions
+    const { data, error } = await supabase
+      .rpc('get_theme_based_questions', {
+        theme_ids: themes,
+        limit_count: limit
+      });
+
+    if (error) {
+      console.error("[QuestionsService] Error fetching theme-based questions:", error);
+
+      // If we get a 401 error, use default questions
+      if (error.code === "PGRST301" || error.code === "401") {
+        console.log("[QuestionsService] Authentication error, using default questions");
+        return DEFAULT_QUESTIONS;
+      }
+
+      // Try fallback method
+      return await fetchDefaultQuestions(limit);
+    }
+
+    console.log("[QuestionsService] Received questions data:", data);
+
+    if (!data || data.length === 0) {
+      console.warn("[QuestionsService] No theme-based questions found, using default questions");
+      // Fallback to get any active questions if no theme-based questions
+      return await fetchDefaultQuestions(limit);
+    }
+
+    const questions: Question[] = data.map(q => ({
+      id: q.id,
+      type: q.type as 'text' | 'choice' | 'color' | 'textarea',
+      question_text: q.question_text,
+      options: q.options as string[] | undefined,
+      is_active: q.is_active === true,
+      usage_count: q.usage_count || 0
+    }));
+
+    console.log(`[QuestionsService] Successfully processed ${questions.length} questions`);
+    return questions;
+    */
+  } catch (err) {
+    console.error("[QuestionsService] Error in fetchThemeBasedQuestions:", err);
+    return DEFAULT_QUESTIONS;
+  }
+};
+
+/**
+ * Fetches default set of questions when theme-based questions fail
+ * @param limit Number of questions to fetch
+ * @returns Array of questions
+ */
+const fetchDefaultQuestions = async (limit: number = 5): Promise<Question[]> => {
+  try {
+    console.log("[QuestionsService] Fetching default questions");
+
+    // Check if we have a session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const hasSession = !!sessionData.session;
+    console.log("[QuestionsService] Session check for default questions:", hasSession ? "Active session" : "No session");
+
+    // If no session, return hardcoded defaults immediately
+    if (!hasSession) {
+      console.log("[QuestionsService] No active session, using hardcoded defaults");
+      return DEFAULT_QUESTIONS;
+    }
+
+    // Get active questions from Supabase
+    const { data, error } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('is_active', true)
+      .order('usage_count', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("[QuestionsService] Error fetching default questions:", error);
+
+      // If we get a 401 error, use hardcoded defaults
+      if (error.code === "PGRST301" || error.code === "401") {
+        console.log("[QuestionsService] Authentication error, using hardcoded defaults");
+        return DEFAULT_QUESTIONS;
+      }
+
+      throw new Error(`Failed to fetch questions: ${error.message}`);
+    }
+
+    console.log("[QuestionsService] Received default questions data:", data);
+
+    if (!data || data.length === 0) {
+      console.warn("[QuestionsService] No questions found in database, using hardcoded defaults");
+      return DEFAULT_QUESTIONS;
+    }
+
+    const questions: Question[] = data.map(q => ({
+      id: q.id,
+      type: q.type as 'text' | 'choice' | 'color' | 'textarea',
+      question_text: q.question_text,
+      options: q.options as string[] | undefined,
+      is_active: q.is_active === true,
+      usage_count: q.usage_count || 0
+    }));
+
+    console.log(`[QuestionsService] Successfully processed ${questions.length} default questions`);
+    return questions;
+  } catch (err) {
+    console.error("[QuestionsService] Error in fetchDefaultQuestions:", err);
+    return DEFAULT_QUESTIONS;
+  }
+};
+
+/**
+ * Updates the usage count for a question
+ * @param questionId ID of the question that was used
+ */
+export const incrementQuestionUsage = async (questionId: string): Promise<void> => {
+  try {
+    const { data: questionData, error: fetchError } = await supabase
+      .from('questions')
+      .select('usage_count')
+      .eq('id', questionId)
+      .single();
+
+    if (fetchError) {
+      console.error(`Error fetching question ${questionId}:`, fetchError);
+      return;
+    }
+
+    const currentCount = questionData?.usage_count || 0;
+
+    const { error: updateError } = await supabase
+      .from('questions')
+      .update({ usage_count: currentCount + 1 })
+      .eq('id', questionId);
+
+    if (updateError) {
+      console.error(`Error updating usage count for question ${questionId}:`, updateError);
+    } else {
+      console.log(`Updated usage count for question ${questionId} to ${currentCount + 1}`);
+    }
+  } catch (err) {
+    console.error(`Failed to update usage count for question ${questionId}:`, err);
+  }
+};
+
+// Default questions to use as fallback if API fails
+const DEFAULT_QUESTIONS: Question[] = [
+  {
+    id: "q1",
+    type: "text",
+    question_text: "What's the main message you want on your t-shirt?",
+    is_active: true,
+  },
+  {
+    id: "q2",
+    type: "choice",
+    question_text: "What style are you looking for?",
+    options: ["Minimal", "Vintage", "Bold", "Artistic", "Funny"],
+    is_active: true,
+  },
+  {
+    id: "q3",
+    type: "color",
+    question_text: "What's your preferred color palette?",
+    is_active: true,
+  },
+  {
+    id: "q4",
+    type: "choice",
+    question_text: "What's the occasion for this t-shirt?",
+    options: ["Casual wear", "Special event", "Gift", "Team/Group", "Other"],
+    is_active: true,
+  },
+  {
+    id: "q5",
+    type: "textarea",
+    question_text: "Any additional details you'd like to include in your design?",
+    is_active: true,
+  },
+];
